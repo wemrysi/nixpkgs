@@ -335,7 +335,11 @@ in
       # break dependency cycles
       fetchurl = stdenv.fetchurlBoot;
       zlib = buildPackages.zlib.override { fetchurl = stdenv.fetchurlBoot; };
-      pkgconfig = buildPackages.pkgconfig.override { fetchurl = stdenv.fetchurlBoot; };
+      pkgconfig = buildPackages.pkgconfig.override (old: {
+        pkg-config = old.pkg-config.override {
+          fetchurl = stdenv.fetchurlBoot;
+        };
+      });
       perl = buildPackages.perl.override { fetchurl = stdenv.fetchurlBoot; };
       openssl = buildPackages.openssl.override {
         fetchurl = stdenv.fetchurlBoot;
@@ -4901,6 +4905,8 @@ in
 
   libepc = callPackage ../development/libraries/libepc { };
 
+  liberfa = callPackage ../development/libraries/liberfa { };
+
   libestr = callPackage ../development/libraries/libestr { };
 
   libevdev = callPackage ../development/libraries/libevdev { };
@@ -4984,6 +4990,8 @@ in
   libmpack = callPackage ../development/libraries/libmpack { };
 
   libiberty = callPackage ../development/libraries/libiberty { };
+
+  libucl = callPackage ../development/libraries/libucl { };
 
   libxc = callPackage ../development/libraries/libxc { };
 
@@ -6552,6 +6560,8 @@ in
   setroot = callPackage  ../tools/X11/setroot { };
 
   setserial = callPackage ../tools/system/setserial { };
+
+  setzer = callPackage ../applications/editors/setzer { };
 
   seqdiag = with python3Packages; toPythonApplication seqdiag;
 
@@ -9773,6 +9783,7 @@ in
   inherit (callPackage ../development/interpreters/ruby {
     inherit (darwin) libiconv libobjc libunwind;
     inherit (darwin.apple_sdk.frameworks) Foundation;
+    bison = bison_3_5;
   })
     ruby_2_5
     ruby_2_6
@@ -10100,6 +10111,15 @@ in
 
   bison = callPackage ../development/tools/parsing/bison { };
   yacc = bison; # TODO: move to aliases.nix
+
+  # Ruby fails to build with current bison
+  bison_3_5 = pkgs.bison.overrideAttrs (oldAttrs: rec {
+    version = "3.5.4";
+    src = fetchurl {
+      url = "mirror://gnu/${oldAttrs.pname}/${oldAttrs.pname}-${version}.tar.gz";
+      sha256 = "0a2cbrqh7mgx2dwf5qm10v68iakv1i0dqh9di4x5aqxsz96ibpf0";
+    };
+  });
 
   black = with python3Packages; toPythonApplication black;
 
@@ -10795,12 +10815,23 @@ in
 
   pmccabe = callPackage ../development/tools/misc/pmccabe { };
 
-  pkgconf = callPackage ../development/tools/misc/pkgconf {};
+  pkgconf-unwrapped = callPackage ../development/tools/misc/pkgconf {};
+  pkgconf = callPackage ../build-support/pkg-config-wrapper {
+    pkg-config = pkgconf-unwrapped;
+    baseBinName = "pkgconf";
+  };
 
-  pkg-config = callPackage ../development/tools/misc/pkg-config { };
+  pkg-config-unwrapped = callPackage ../development/tools/misc/pkg-config { };
+  pkg-config = callPackage ../build-support/pkg-config-wrapper {
+    pkg-config = pkg-config-unwrapped;
+  };
   pkgconfig = pkg-config; # added 2018-02-02
 
-  pkg-configUpstream = lowPrio (pkg-config.override { vanilla = true; });
+  pkg-configUpstream = lowPrio (pkg-config.override (old: {
+    pkg-config = old.pkg-config.override {
+      vanilla = true;
+    };
+  }));
   pkgconfigUpstream = pkg-configUpstream; # added 2018-02-02
 
   inherit (nodePackages) postcss-cli;
@@ -11028,6 +11059,7 @@ in
   terracognita = callPackage ../development/tools/misc/terracognita { };
 
   terraform-lsp = callPackage ../development/tools/misc/terraform-lsp { };
+  terraform-ls = callPackage ../development/tools/misc/terraform-ls { };
 
   texinfo413 = callPackage ../development/tools/misc/texinfo/4.13a.nix { };
   texinfo4 = texinfo413;
@@ -12166,6 +12198,8 @@ in
   gdata-sharp = callPackage ../development/libraries/gdata-sharp { };
 
   gdk-pixbuf = callPackage ../development/libraries/gdk-pixbuf { };
+
+  gdk-pixbuf-xlib = callPackage ../development/libraries/gdk-pixbuf/xlib.nix { };
 
   gnome-sharp = callPackage ../development/libraries/gnome-sharp { };
 
@@ -16138,6 +16172,8 @@ in
   prometheus-gitlab-ci-pipelines-exporter = callPackage ../servers/monitoring/prometheus/gitlab-ci-pipelines-exporter.nix { };
   prometheus-haproxy-exporter = callPackage ../servers/monitoring/prometheus/haproxy-exporter.nix { };
   prometheus-json-exporter = callPackage ../servers/monitoring/prometheus/json-exporter.nix { };
+  prometheus-keylight-exporter = callPackage ../servers/monitoring/prometheus/keylight-exporter.nix { };
+  prometheus-lnd-exporter = callPackage ../servers/monitoring/prometheus/lnd-exporter.nix { };
   prometheus-mail-exporter = callPackage ../servers/monitoring/prometheus/mail-exporter.nix { };
   prometheus-mesos-exporter = callPackage ../servers/monitoring/prometheus/mesos-exporter.nix { };
   prometheus-mikrotik-exporter = callPackage ../servers/monitoring/prometheus/mikrotik-exporter.nix { };
@@ -19822,7 +19858,7 @@ in
 
   gitAndTools = recurseIntoAttrs (callPackage ../applications/version-management/git-and-tools {});
 
-  inherit (gitAndTools) git gitFull gitSVN git-cola svn2git git-radar git-secret git-secrets transcrypt git-crypt ghq;
+  inherit (gitAndTools) git gitFull gitSVN git-cola git-doc svn2git git-radar git-secret git-secrets transcrypt git-crypt ghq;
 
   gitMinimal = git.override {
     withManual = false;
@@ -19892,6 +19928,8 @@ in
   svox = callPackage ../applications/audio/svox { };
 
   giada = callPackage ../applications/audio/giada {};
+
+  gitit = callPackage ../applications/misc/gitit {};
 
   gkrellm = callPackage ../applications/misc/gkrellm {
     inherit (darwin) IOKit;
@@ -21714,6 +21752,8 @@ in
     };
   };
 
+  qsudo = libsForQt5.callPackage ../applications/misc/qsudo { };
+
   qsynth = libsForQt5.callPackage ../applications/audio/qsynth { };
 
   qtbitcointrader = libsForQt5.callPackage ../applications/misc/qtbitcointrader { };
@@ -21879,6 +21919,8 @@ in
   rrsync = callPackage ../applications/networking/sync/rsync/rrsync.nix {};
 
   rtl_433 = callPackage ../applications/radio/rtl_433 { };
+
+  rtl-ais = callPackage ../applications/radio/rtl-ais { };
 
   rtl-sdr = callPackage ../applications/radio/rtl-sdr { };
 
@@ -25547,7 +25589,7 @@ in
   faust1 = callPackage ../applications/audio/faust/faust1.nix { };
 
   faust2 = callPackage ../applications/audio/faust/faust2.nix {
-    llvm = llvm_9;
+    llvm = llvm_10;
   };
 
   faust2alqt = callPackage ../applications/audio/faust/faust2alqt.nix { };
