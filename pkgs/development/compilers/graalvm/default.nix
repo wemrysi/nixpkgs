@@ -5,7 +5,7 @@
 }:
 
 let
-  version = "19.2.1";
+  version = "20.2.0";
   mercurial = mercurial_4;
   truffleMake = ./truffle.make;
   makeMxGitCache = list: out: ''
